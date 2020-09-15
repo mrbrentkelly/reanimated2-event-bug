@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 /**
  * Sample React Native App
  * https://github.com/facebook/react-native
@@ -9,110 +10,78 @@
  */
 
 import React from 'react';
-import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  StatusBar,
-} from 'react-native';
+import {Text, View, requireNativeComponent} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  // @ts-ignore
+  useEvent,
+} from 'react-native-reanimated';
 
-import {
-  Header,
-  LearnMoreLinks,
-  Colors,
-  DebugInstructions,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const MyCustomView = requireNativeComponent('MyCustomView');
+const AnimatedMyCustomView = Animated.createAnimatedComponent(MyCustomView);
 
-declare const global: {HermesInternal: null | {}};
+type ElapsedEvent = {elapsed: number};
 
-const App = () => {
-  return (
-    <>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header />
-          {global.HermesInternal == null ? null : (
-            <View style={styles.engine}>
-              <Text style={styles.footer}>Engine: Hermes</Text>
-            </View>
-          )}
-          <View style={styles.body}>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Step One</Text>
-              <Text style={styles.sectionDescription}>
-                Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-                screen and then come back to see your edits.
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>See Your Changes</Text>
-              <Text style={styles.sectionDescription}>
-                <ReloadInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Debug</Text>
-              <Text style={styles.sectionDescription}>
-                <DebugInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Learn More</Text>
-              <Text style={styles.sectionDescription}>
-                Read the docs to discover what to do next:
-              </Text>
-            </View>
-            <LearnMoreLinks />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+function useOnEventDispatcher(handler: (event: ElapsedEvent) => void) {
+  return useEvent(
+    (event: ElapsedEvent) => {
+      'worklet';
+      handler(event);
+    },
+    ['onEventDispatcher'],
   );
-};
+}
 
-const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
-  },
-  engine: {
-    position: 'absolute',
-    right: 0,
-  },
-  body: {
-    backgroundColor: Colors.white,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
-  },
-});
+function useOnEventRCT(handler: (event: ElapsedEvent) => void) {
+  return useEvent(
+    (event: ElapsedEvent) => {
+      'worklet';
+      handler(event);
+    },
+    ['onEventRCT'],
+  );
+}
 
-export default App;
+export default function App() {
+  const rctElapsed = useSharedValue(0);
+  const rctEventStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: 'blue',
+      height: 20,
+      width: rctElapsed.value,
+    };
+  });
+  const onEventRCT = useOnEventRCT((event) => {
+    rctElapsed.value = event.elapsed * 10;
+  });
+
+  const dispatcherElapsed = useSharedValue(0);
+  const dispatchedEventStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: 'red',
+      height: 20,
+      width: dispatcherElapsed.value,
+    };
+  });
+  const onEventDispatcher = useOnEventDispatcher((event) => {
+    dispatcherElapsed.value = event.elapsed * 10;
+  });
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        flexDirection: 'column',
+      }}>
+      <AnimatedMyCustomView
+        emitEvents={true}
+        {...{onEventRCT, onEventDispatcher}}
+      />
+      <Text>Tracking RCT Event (broken)</Text>
+      <Animated.View style={rctEventStyle} />
+      <Text>Tracking Dispatcher Event</Text>
+      <Animated.View style={dispatchedEventStyle} />
+    </View>
+  );
+}
